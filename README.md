@@ -60,5 +60,5 @@ flutter build apk --release --split-per-abi
 
 ---
 
-MIT © 2026 ongrass
+GPLv3 © 2026 OngrassTech
 
