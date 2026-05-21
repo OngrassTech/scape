@@ -3,7 +3,7 @@
 
 
 ![Flutter](https://img.shields.io/badge/Flutter-Android-blue?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)
 ![Version](https://img.shields.io/badge/Version-1.0.0-lightgrey?style=flat-square)
 
 
