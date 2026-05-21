@@ -2,11 +2,9 @@
 
 
 
-!\[Flutter](https://img.shields.io/badge/Flutter-Android-blue)
-
-!\[License](https://img.shields.io/badge/license-MIT-green)
-
-!\[Version](https://img.shields.io/badge/version-1.0.0-lightgrey)
+![Flutter](https://img.shields.io/badge/Flutter-Android-blue?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.0-lightgrey?style=flat-square)
 
 
 
