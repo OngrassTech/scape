@@ -232,7 +232,7 @@ class _SettingsHomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Licensed under the MIT License',
+                  appLicenseLabel,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: palette.player.withValues(alpha: 0.84),

@@ -1,8 +1,9 @@
 const String appName = 'Scape';
-const String appDisplayVersion = '1.0';
-const String appReleaseVersion = '1.0.0';
+const String appReleaseVersion = '1.0.1';
+const String appDisplayVersion = 'v$appReleaseVersion';
 const String appCopyrightLabel = '\u00A9 2026 OngrassTech';
 const String appGithubRepoLabel = 'github.com/OngrassTech/scape';
+const String appLicenseLabel = 'Licensed under GPLv3';
 const String appGithubRepoUrl = 'https://github.com/OngrassTech/scape';
 const String appGithubReleasesUrl =
     'https://github.com/OngrassTech/scape/releases';

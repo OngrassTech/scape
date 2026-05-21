@@ -179,7 +179,9 @@ AppUpdateResult _buildReleaseResult({
     );
   }
 
-  return const AppUpdateResult.upToDate(message: 'Scape 1.0 is up to date.');
+  return const AppUpdateResult.upToDate(
+    message: '$appName $appDisplayVersion is up to date.',
+  );
 }
 
 bool _isRedirectStatusCode(int statusCode) {

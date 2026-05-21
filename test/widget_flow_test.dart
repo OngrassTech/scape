@@ -377,10 +377,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('check-updates-button')), findsOneWidget);
-      expect(find.text('Scape 1.0'), findsOneWidget);
+      expect(find.text('Scape v1.0.1'), findsOneWidget);
       expect(find.text('© 2026 OngrassTech'), findsOneWidget);
       expect(find.text('github.com/OngrassTech/scape'), findsOneWidget);
-      expect(find.text('Licensed under the MIT License'), findsOneWidget);
+      expect(find.text('Licensed under GPLv3'), findsOneWidget);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
@@ -431,7 +431,7 @@ void main() {
       appUpdateLookup: (String currentVersion) async {
         lookupCalls++;
         return const AppUpdateResult.upToDate(
-          message: 'Scape 1.0 is up to date.',
+          message: 'Scape v1.0.1 is up to date.',
         );
       },
     );
@@ -454,7 +454,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(lookupCalls, 1);
-      expect(find.text('Scape 1.0 is up to date.'), findsOneWidget);
+      expect(find.text('Scape v1.0.1 is up to date.'), findsOneWidget);
       expect(find.byKey(const Key('purchase-toast')), findsOneWidget);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
