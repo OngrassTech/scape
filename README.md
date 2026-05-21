@@ -29,7 +29,7 @@ Just a simple and clean maze game with fluent animation and pleasing aesthetics.
 
 ## Features
 
-* **Free and open source**
+* **Free and open source** — free to play, no bloat
 * **Millions of unique mazes** — generated with a custom hybrid algorithm
 * **Minimal, yet gorgeous** — clean design with tons of customization options
 * **Smooth animations** — everything feels fluid
