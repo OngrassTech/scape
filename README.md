@@ -8,7 +8,7 @@
 
 
 
-Just a simple and clean maze game with fluent animation and pleasing aesthetics.
+A simple and clean maze game with fluent animations and pleasing aesthetics.
 
 
 
