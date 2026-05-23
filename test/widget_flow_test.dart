@@ -1831,6 +1831,58 @@ void main() {
       controller.dispose();
     }
   });
+
+  testWidgets('blank theme slots show lock buttons and tap displays buy themes toast', (
+    WidgetTester tester,
+  ) async {
+    final GameSessionController controller = GameSessionController(
+      feedbackController: NoopFeedbackController(),
+      initialProgress: const PlayerProgress(
+        points: 0,
+        ownedThemes: <ThemeId>{ThemeId.orange},
+        bestTimesByDifficulty: <Difficulty, int>{},
+      ),
+    );
+    try {
+      await tester.pumpWidget(
+        MazeGameApp(
+          key: const ValueKey<String>('theme-lock-test-app'),
+          controller: controller,
+        ),
+      );
+      await _settlePastLaunchIntro(tester);
+
+      // Open themes panel
+      await tester.tap(find.byKey(const Key('theme-toggle-button')));
+      await tester.pumpAndSettle();
+
+      // Theme orange should be present (index 0)
+      expect(find.byKey(const Key('theme-option-orange')), findsOneWidget);
+
+      // Blank slots (indices 1, 2, 3) should have lock buttons
+      expect(find.byKey(const Key('theme-lock-1')), findsOneWidget);
+      expect(find.byKey(const Key('theme-lock-2')), findsOneWidget);
+      expect(find.byKey(const Key('theme-lock-3')), findsOneWidget);
+
+      // Tap on a lock button
+      await tester.tap(find.byKey(const Key('theme-lock-1')));
+      await tester.pump();
+
+      // Verify lock toast is displayed
+      expect(find.byKey(const Key('exit-toast')), findsOneWidget);
+      expect(find.text('Buy themes from shop'), findsOneWidget);
+
+      // Wait 2 seconds (the lock toast duration)
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+
+      // Verify lock toast is gone
+      expect(find.text('Buy themes from shop'), findsNothing);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      controller.dispose();
+    }
+  });
 }
 
 double _fadeValue(WidgetTester tester, Key key) {
@@ -1869,24 +1921,26 @@ final Set<Position> _launchIntroRoute = <Position>{
   Position(0, 0),
   Position(1, 0),
   Position(2, 0),
-  Position(3, 0),
-  Position(4, 0),
-  Position(5, 0),
-  Position(6, 0),
-  Position(7, 0),
-  Position(7, 1),
-  Position(7, 2),
-  Position(7, 3),
-  Position(6, 3),
-  Position(5, 3),
-  Position(4, 3),
-  Position(3, 3),
-  Position(2, 3),
+  Position(2, 1),
+  Position(2, 2),
+  Position(1, 2),
+  Position(0, 2),
+  Position(0, 3),
+  Position(0, 4),
+  Position(1, 4),
   Position(2, 4),
-  Position(2, 5),
-  Position(2, 6),
-  Position(2, 7),
-  Position(3, 7),
+  Position(3, 4),
+  Position(4, 4),
+  Position(4, 3),
+  Position(4, 2),
+  Position(5, 2),
+  Position(6, 2),
+  Position(6, 3),
+  Position(6, 4),
+  Position(6, 5),
+  Position(6, 6),
+  Position(5, 6),
+  Position(4, 6),
   Position(4, 7),
   Position(5, 7),
   Position(6, 7),

@@ -12,6 +12,26 @@ import 'test_helpers.dart';
 
 void main() {
   group('GameSessionController', () {
+    test(
+      'medium difficulty now sits closer to hard than easy for board density',
+      () {
+        final DifficultyConfig easy = Difficulty.easy.config;
+        final DifficultyConfig medium = Difficulty.medium.config;
+        final DifficultyConfig hard = Difficulty.hard.config;
+
+        expect(
+          medium.width - easy.width,
+          greaterThan(hard.width - medium.width),
+        );
+        expect(
+          medium.height - easy.height,
+          greaterThan(hard.height - medium.height),
+        );
+        expect(medium.timeLimitSeconds, greaterThan(easy.timeLimitSeconds));
+        expect(medium.timeLimitSeconds, lessThan(hard.timeLimitSeconds));
+      },
+    );
+
     testWidgets(
       'nightmare time trial starts at one minute forty-five seconds',
       (WidgetTester tester) async {

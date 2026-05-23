@@ -50,6 +50,7 @@ class MazeBoard extends StatefulWidget {
     required this.enabled,
     required this.successCycle,
     required this.boardVersion,
+    this.showOuterBorder = true,
   });
 
   final List<List<MazeCell>> maze;
@@ -64,6 +65,7 @@ class MazeBoard extends StatefulWidget {
   final bool enabled;
   final int successCycle;
   final int boardVersion;
+  final bool showOuterBorder;
 
   @override
   State<MazeBoard> createState() => _MazeBoardState();
@@ -188,6 +190,7 @@ class _MazeBoardState extends State<MazeBoard> with TickerProviderStateMixin {
                       maze: widget.maze,
                       palette: widget.palette,
                       cellSize: widget.cellSize,
+                      showOuterBorder: widget.showOuterBorder,
                     ),
                   ),
                   FadeTransition(
@@ -227,9 +230,10 @@ class _MazeBoardState extends State<MazeBoard> with TickerProviderStateMixin {
                     key: const Key('board-player-fade'),
                     opacity: ReverseAnimation(_successController),
                     child: AnimatedBuilder(
-                      animation: Listenable.merge(
-                        <Listenable>[_playerMoveController, _successController],
-                      ),
+                      animation: Listenable.merge(<Listenable>[
+                        _playerMoveController,
+                        _successController,
+                      ]),
                       builder: (BuildContext context, _) {
                         return CustomPaint(
                           painter: _PlayerPainter(
@@ -286,6 +290,7 @@ class _MazeBoardState extends State<MazeBoard> with TickerProviderStateMixin {
 
     return KeyEventResult.ignored;
   }
+
   Offset _offsetFor(Position position) {
     return Offset(position.x.toDouble(), position.y.toDouble());
   }
@@ -328,11 +333,13 @@ class _MazeBasePainter extends CustomPainter {
     required this.maze,
     required this.palette,
     required this.cellSize,
+    required this.showOuterBorder,
   });
 
   final List<List<MazeCell>> maze;
   final MazePalette palette;
   final double cellSize;
+  final bool showOuterBorder;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -341,6 +348,8 @@ class _MazeBasePainter extends CustomPainter {
       ..color = palette.grid
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
+    final int lastColumn = maze.isNotEmpty ? maze.first.length - 1 : -1;
+    final int lastRow = maze.length - 1;
 
     canvas.drawRect(Offset.zero & size, backgroundPaint);
 
@@ -354,24 +363,27 @@ class _MazeBasePainter extends CustomPainter {
           cellSize,
         );
 
-        if (cell.walls.right) {
+        if (cell.walls.right && (showOuterBorder || x != lastColumn)) {
           canvas.drawLine(cellRect.topRight, cellRect.bottomRight, wallPaint);
         }
-        if (cell.walls.bottom) {
+        if (cell.walls.bottom && (showOuterBorder || y != lastRow)) {
           canvas.drawLine(cellRect.bottomLeft, cellRect.bottomRight, wallPaint);
         }
       }
     }
 
-    canvas.drawLine(Offset.zero, Offset(size.width, 0), wallPaint);
-    canvas.drawLine(Offset.zero, Offset(0, size.height), wallPaint);
+    if (showOuterBorder) {
+      canvas.drawLine(Offset.zero, Offset(size.width, 0), wallPaint);
+      canvas.drawLine(Offset.zero, Offset(0, size.height), wallPaint);
+    }
   }
 
   @override
   bool shouldRepaint(covariant _MazeBasePainter oldDelegate) {
     return oldDelegate.maze != maze ||
         oldDelegate.palette != palette ||
-        oldDelegate.cellSize != cellSize;
+        oldDelegate.cellSize != cellSize ||
+        oldDelegate.showOuterBorder != showOuterBorder;
   }
 }
 
@@ -525,8 +537,18 @@ class _PlayerPainter extends CustomPainter {
     final double playerScale = lerpDouble(1, 0, successProgress) ?? 1;
     final Paint playerShadowPaint = Paint()..color = palette.playerShadow;
     final Paint playerPaint = Paint()..color = palette.player;
-    final Rect shadowRect = _scaledInsetRect(cellRect, 0.12, shadowScale, cellSize);
-    final Rect playerRect = _scaledInsetRect(cellRect, 0.15, playerScale, cellSize);
+    final Rect shadowRect = _scaledInsetRect(
+      cellRect,
+      0.12,
+      shadowScale,
+      cellSize,
+    );
+    final Rect playerRect = _scaledInsetRect(
+      cellRect,
+      0.15,
+      playerScale,
+      cellSize,
+    );
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(shadowRect, Radius.circular(cellSize * 0.16)),
@@ -581,11 +603,16 @@ class _SuccessBurstPainter extends CustomPainter {
     final Paint glowPaint = Paint()
       ..color = palette.goal.withValues(alpha: 0.20 * fade)
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, cellSize * 0.18);
-    canvas.drawCircle(center, cellSize * (0.34 + (glowProgress * 0.92)), glowPaint);
+    canvas.drawCircle(
+      center,
+      cellSize * (0.34 + (glowProgress * 0.92)),
+      glowPaint,
+    );
 
     for (final double delay in <double>[0, 0.12]) {
-      final double ringProgress =
-          ((progress - delay) / 0.52).clamp(0.0, 1.0).toDouble();
+      final double ringProgress = ((progress - delay) / 0.52)
+          .clamp(0.0, 1.0)
+          .toDouble();
       if (ringProgress <= 0) {
         continue;
       }
@@ -611,8 +638,9 @@ class _SuccessBurstPainter extends CustomPainter {
       );
     }
 
-    final double sparkProgress =
-        ((progress - 0.06) / 0.44).clamp(0.0, 1.0).toDouble();
+    final double sparkProgress = ((progress - 0.06) / 0.44)
+        .clamp(0.0, 1.0)
+        .toDouble();
     if (sparkProgress <= 0) {
       return;
     }

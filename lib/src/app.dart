@@ -378,31 +378,11 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
                 key: _stackKey,
                 children: <Widget>[
                   Positioned.fill(
-                    child: AnimatedSwitcher(
-                      duration: MazeMotion.background,
-                      switchInCurve: MazeMotion.enterCurve,
-                      switchOutCurve: MazeMotion.exitCurve,
-                      transitionBuilder: _buildBackgroundTransition,
-                      layoutBuilder:
-                          (
-                            Widget? currentChild,
-                            List<Widget> previousChildren,
-                          ) {
-                            return Stack(
-                              fit: StackFit.expand,
-                              children: <Widget>[
-                                ...previousChildren,
-                                if (currentChild case final Widget child) child,
-                              ],
-                            );
-                          },
-                      child: KeyedSubtree(
-                        key: ValueKey<Difficulty>(controller.difficulty),
-                        child: BackgroundMaze(
-                          difficulty: controller.difficulty,
-                          palette: palette,
-                        ),
-                      ),
+                    // BackgroundMaze now self-animates the wall-morph when
+                    // difficulty changes — no AnimatedSwitcher needed here.
+                    child: BackgroundMaze(
+                      difficulty: controller.difficulty,
+                      palette: palette,
                     ),
                   ),
                   Positioned.fill(
@@ -641,6 +621,8 @@ class _BottomNavBarState extends State<_BottomNavBar>
   Timer? _inlineMessageTimer;
   String? _inlineMessage;
   int _inlineMessageCycle = 0;
+  Timer? _lockToastTimer;
+  String? _lockToastMessage;
 
   GameSessionController get controller => widget.controller;
   MazePalette get palette => widget.palette;
@@ -660,14 +642,35 @@ class _BottomNavBarState extends State<_BottomNavBar>
 
   @override
   void dispose() {
+    _lockToastTimer?.cancel();
     _inlineMessageTimer?.cancel();
     _inlineMessageController.dispose();
     _themeSwapController.dispose();
     super.dispose();
   }
 
+  void _showLockToast() {
+    controller.playUiFeedback(
+      sound: SoundCue.failure,
+      haptic: HapticCue.failure,
+    );
+    _lockToastTimer?.cancel();
+    setState(() {
+      _lockToastMessage = 'Buy themes from shop';
+    });
+    _lockToastTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _lockToastMessage = null;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final String? activeMessage = widget.embeddedMessage ?? _lockToastMessage;
     return MazeTopPill(
       pillKey: const Key('bottom-nav-pill'),
       palette: palette,
@@ -677,7 +680,7 @@ class _BottomNavBarState extends State<_BottomNavBar>
         duration: MazeMotion.standard,
         curve: MazeMotion.enterCurve,
         alignment: Alignment.bottomCenter,
-        child: widget.embeddedMessage != null
+        child: activeMessage != null
             ? AnimatedSwitcher(
                 duration: MazeMotion.standard,
                 switchInCurve: MazeMotion.enterCurve,
@@ -694,7 +697,7 @@ class _BottomNavBarState extends State<_BottomNavBar>
                     ),
                   );
                 },
-                child: _buildEmbeddedMessage(widget.embeddedMessage!),
+                child: _buildEmbeddedMessage(activeMessage),
               )
             : _buildNavActions(),
       ),
@@ -888,6 +891,15 @@ class _BottomNavBarState extends State<_BottomNavBar>
         color: _themeChipColor(theme),
         borderColor: selected ? palette.grid : null,
         onTap: enabled ? () => controller.setTheme(theme) : null,
+      );
+    }
+
+    for (int index = themes.length; index < 4; index++) {
+      slots[index] = MazeTopPillIconButton(
+        buttonKey: Key('theme-lock-$index'),
+        onPressed: enabled ? () => _showLockToast() : null,
+        icon: Icons.lock_rounded,
+        color: palette.player,
       );
     }
 
@@ -1350,17 +1362,7 @@ class _SurfaceMorphState extends State<_SurfaceMorph>
   }
 }
 
-Widget _buildBackgroundTransition(Widget child, Animation<double> animation) {
-  return FadeTransition(
-    opacity: animation,
-    child: ScaleTransition(
-      scale: Tween<double>(begin: 1.015, end: 1).animate(
-        CurvedAnimation(parent: animation, curve: MazeMotion.enterCurve),
-      ),
-      child: child,
-    ),
-  );
-}
+
 
 class _TopToast extends StatelessWidget {
   const _TopToast({

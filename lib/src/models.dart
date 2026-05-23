@@ -116,10 +116,10 @@ const Map<Difficulty, DifficultyConfig> difficultyConfigs =
       ),
       Difficulty.medium: DifficultyConfig(
         label: 'Medium',
-        width: 15,
-        height: 22,
-        timeLimitSeconds: 25,
-        previewSize: 12,
+        width: 16,
+        height: 24,
+        timeLimitSeconds: 30,
+        previewSize: 16,
       ),
       Difficulty.hard: DifficultyConfig(
         label: 'Hard',
