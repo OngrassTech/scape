@@ -695,9 +695,9 @@ void main() {
           controller.move(0, 1);
 
           expect(controller.lastClearElapsedSeconds, 5);
-          expect(controller.lastPointsEarned, 1);
+          expect(controller.lastPointsEarned, 4);
           expect(controller.lastClearWasNewBest, isTrue);
-          expect(controller.points, 1);
+          expect(controller.points, 4);
           expect(controller.bestTimeForDifficulty(Difficulty.expert), 5);
 
           controller.nextMaze();
@@ -707,11 +707,11 @@ void main() {
 
           expect(controller.lastClearElapsedSeconds, 7);
           expect(controller.lastClearWasNewBest, isFalse);
-          expect(controller.points, 2);
+          expect(controller.points, 8);
           expect(controller.bestTimeForDifficulty(Difficulty.expert), 5);
 
           await controller.persistProgress();
-          expect(progressPreferences.storedProgress.points, 2);
+          expect(progressPreferences.storedProgress.points, 8);
           expect(
             progressPreferences.storedProgress.bestTimeFor(Difficulty.expert),
             5,
@@ -723,7 +723,7 @@ void main() {
     );
 
     testWidgets(
-      'time trial scoring uses elapsed seconds and grants two points on expert',
+      'time trial scoring uses elapsed seconds and grants eight points on expert',
       (WidgetTester tester) async {
         final GameSessionController controller = GameSessionController(
           generator: const OpenRouteMazeGenerator(),
@@ -739,9 +739,9 @@ void main() {
           controller.move(0, 1);
 
           expect(controller.lastClearElapsedSeconds, 10);
-          expect(controller.lastPointsEarned, 2);
+          expect(controller.lastPointsEarned, 8);
           expect(controller.lastClearWasNewBest, isTrue);
-          expect(controller.points, 2);
+          expect(controller.points, 8);
           expect(controller.bestTimeForDifficulty(Difficulty.expert), 10);
         } finally {
           controller.dispose();

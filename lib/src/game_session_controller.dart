@@ -1012,15 +1012,14 @@ class GameSessionController extends ChangeNotifier {
   }
 
   int _pointsEarnedForCurrentRun() {
-    switch (_difficulty) {
-      case Difficulty.expert:
-      case Difficulty.nightmare:
-        return _isTimeTrial ? 2 : 1;
-      case Difficulty.easy:
-      case Difficulty.medium:
-      case Difficulty.hard:
-        return 0;
-    }
+    final int basePoints = switch (_difficulty) {
+      Difficulty.easy => 1,
+      Difficulty.medium => 2,
+      Difficulty.hard => 3,
+      Difficulty.expert => 4,
+      Difficulty.nightmare => 5,
+    };
+    return _isTimeTrial ? basePoints * 2 : basePoints;
   }
 
   bool _recordBestTime(int elapsedSeconds) {

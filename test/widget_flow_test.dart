@@ -377,7 +377,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('check-updates-button')), findsOneWidget);
-      expect(find.text('Scape v1.0.2'), findsOneWidget);
+      expect(find.text('Scape v1.0.3'), findsOneWidget);
       expect(find.text('© 2026 OngrassTech'), findsOneWidget);
       expect(find.text('github.com/OngrassTech/scape'), findsOneWidget);
       expect(find.text('Licensed under GPLv3'), findsOneWidget);
@@ -431,7 +431,7 @@ void main() {
       appUpdateLookup: (String currentVersion) async {
         lookupCalls++;
         return const AppUpdateResult.upToDate(
-          message: 'Scape v1.0.2 is up to date.',
+          message: 'Scape v1.0.3 is up to date.',
         );
       },
     );
@@ -454,7 +454,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(lookupCalls, 1);
-      expect(find.text('Scape v1.0.2 is up to date.'), findsOneWidget);
+      expect(find.text('Scape v1.0.3 is up to date.'), findsOneWidget);
       expect(find.byKey(const Key('purchase-toast')), findsOneWidget);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
@@ -1476,7 +1476,8 @@ void main() {
       expect(find.byKey(const Key('help-scoring-points-chip')), findsOneWidget);
       expect(
         find.text(
-          'Expert and Nightmare give you 1 point.\nIn time trial they give 2 points.',
+          'Completing higher difficulty gives more points.\n'
+          'Time trial gives you double points.',
         ),
         findsOneWidget,
       );
@@ -1782,8 +1783,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
 
-      expect(find.text('+1 point'), findsOneWidget);
-      expect(find.text('Total 1'), findsOneWidget);
+      expect(find.text('+4 points'), findsOneWidget);
+      expect(find.text('Total 4'), findsOneWidget);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();

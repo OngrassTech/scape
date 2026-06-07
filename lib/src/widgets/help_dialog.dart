@@ -83,8 +83,8 @@ class _HelpDialogState extends State<HelpDialog> {
                       palette: widget.palette,
                       title: 'Scoring',
                       body:
-                          'Expert and Nightmare give you 1 point.\n'
-                          'In time trial they give 2 points.',
+                          'Completing higher difficulty gives more points.\n'
+                          'Time trial gives you double points.',
                       demo: _ScoringDemo(palette: widget.palette),
                     ),
                   ],
