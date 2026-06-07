@@ -138,69 +138,71 @@ class _SettingsHomePage extends StatelessWidget {
               key: const Key('settings-main-menu-footer'),
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                AnimatedSize(
-                  duration: MazeMotion.surfaceMorph,
-                  curve: MazeMotion.enterCurve,
-                  alignment: Alignment.topCenter,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      MazeActionButton(
-                        buttonKey: const Key('check-updates-button'),
-                        label: controller.isCheckingForUpdates
-                            ? 'Checking...'
-                            : 'Check for Updates',
-                        onPressed: controller.isCheckingForUpdates
-                            ? null
-                            : controller.checkForUpdates,
-                        palette: palette,
-                        backgroundColor: Colors.transparent,
-                        disabledBackgroundColor: Colors.transparent,
-                      ),
-                      AnimatedSwitcher(
-                        duration: MazeMotion.standard,
-                        switchInCurve: MazeMotion.enterCurve,
-                        switchOutCurve: MazeMotion.exitCurve,
-                        transitionBuilder:
-                            (Widget child, Animation<double> animation) {
-                              return FadeTransition(
-                                opacity: animation,
-                                child: SizeTransition(
-                                  sizeFactor: animation,
-                                  axisAlignment: -1,
-                                  child: child,
-                                ),
-                              );
-                            },
-                        child: controller.hasAvailableUpdate
-                            ? Padding(
-                                key: const ValueKey<String>(
-                                  'settings-update-button-visible',
-                                ),
-                                padding: const EdgeInsets.only(top: 14),
-                                child: MazeActionButton(
-                                  buttonKey: const Key('update-button'),
-                                  label: 'Update',
-                                  onPressed: () {
-                                    controller.openAvailableUpdate();
-                                  },
-                                  palette: palette,
-                                  backgroundColor: palette.player.withValues(
-                                    alpha: 0.12,
+                if (!const bool.fromEnvironment('FDROID')) ...<Widget>[
+                  AnimatedSize(
+                    duration: MazeMotion.surfaceMorph,
+                    curve: MazeMotion.enterCurve,
+                    alignment: Alignment.topCenter,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        MazeActionButton(
+                          buttonKey: const Key('check-updates-button'),
+                          label: controller.isCheckingForUpdates
+                              ? 'Checking...'
+                              : 'Check for Updates',
+                          onPressed: controller.isCheckingForUpdates
+                              ? null
+                              : controller.checkForUpdates,
+                          palette: palette,
+                          backgroundColor: Colors.transparent,
+                          disabledBackgroundColor: Colors.transparent,
+                        ),
+                        AnimatedSwitcher(
+                          duration: MazeMotion.standard,
+                          switchInCurve: MazeMotion.enterCurve,
+                          switchOutCurve: MazeMotion.exitCurve,
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SizeTransition(
+                                    sizeFactor: animation,
+                                    axisAlignment: -1,
+                                    child: child,
                                   ),
-                                  borderColor: palette.player,
+                                );
+                              },
+                          child: controller.hasAvailableUpdate
+                              ? Padding(
+                                  key: const ValueKey<String>(
+                                    'settings-update-button-visible',
+                                  ),
+                                  padding: const EdgeInsets.only(top: 14),
+                                  child: MazeActionButton(
+                                    buttonKey: const Key('update-button'),
+                                    label: 'Update',
+                                    onPressed: () {
+                                      controller.openAvailableUpdate();
+                                    },
+                                    palette: palette,
+                                    backgroundColor: palette.player.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderColor: palette.player,
+                                  ),
+                                )
+                              : const SizedBox(
+                                  key: ValueKey<String>(
+                                    'settings-update-button-hidden',
+                                  ),
                                 ),
-                              )
-                            : const SizedBox(
-                                key: ValueKey<String>(
-                                  'settings-update-button-hidden',
-                                ),
-                              ),
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
+                ],
                 Text(
                   '$appName $appDisplayVersion',
                   textAlign: TextAlign.center,

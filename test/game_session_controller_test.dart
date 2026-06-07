@@ -80,9 +80,9 @@ void main() {
           feedbackController: NoopFeedbackController(),
           appUpdateLookup: (String currentVersion) async {
             return const AppUpdateResult.updateAvailable(
-              latestVersion: '1.0.1',
+              latestVersion: '1.0.3',
               releaseUrl: 'https://github.com/OngrassTech/scape/releases',
-              message: 'Update available: 1.0.1 on GitHub Releases.',
+              message: 'Update available: 1.0.3 on GitHub Releases.',
             );
           },
         );
@@ -115,10 +115,10 @@ void main() {
           feedbackController: NoopFeedbackController(),
           appUpdateLookup: (String currentVersion) async {
             return const AppUpdateResult.updateAvailable(
-              latestVersion: '1.0.1',
+              latestVersion: '1.0.3',
               releaseUrl:
-                  'https://github.com/OngrassTech/scape/releases/tag/v1.0.1',
-              message: 'Update available: 1.0.1 on GitHub Releases.',
+                  'https://github.com/OngrassTech/scape/releases/tag/v1.0.3',
+              message: 'Update available: 1.0.3 on GitHub Releases.',
             );
           },
           updateReleaseLauncher: (String releaseUrl) async {
@@ -132,7 +132,7 @@ void main() {
 
           expect(
             openedUrl,
-            'https://github.com/OngrassTech/scape/releases/tag/v1.0.1',
+            'https://github.com/OngrassTech/scape/releases/tag/v1.0.3',
           );
           expect(controller.transientToastMessage, isNull);
         } finally {

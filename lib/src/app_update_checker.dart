@@ -7,5 +7,10 @@ typedef AppUpdateLookup =
     Future<AppUpdateResult> Function(String currentVersion);
 
 Future<AppUpdateResult> fetchLatestGitHubRelease(String currentVersion) {
+  if (const bool.fromEnvironment('FDROID')) {
+    return Future.value(const AppUpdateResult.unavailable(
+      message: 'Update checks are unavailable on this platform.',
+    ));
+  }
   return platform.fetchLatestGitHubRelease(currentVersion);
 }
