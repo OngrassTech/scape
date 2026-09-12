@@ -15,11 +15,11 @@ A simple and clean maze game with fluent animations and pleasing aesthetics.
 -
 
 
-![Banner 1](screenshots/banner1.png)
+![Banner 1](screenshot/banner1.png)
 
-![Banner 2](screenshots/banner2.png)
+![Banner 2](screenshot/banner2.png)
 
-![Banner 3](screenshots/banner3.png)
+![Banner 3](screenshot/banner3.png)
 
 
 
