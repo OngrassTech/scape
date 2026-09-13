@@ -8,6 +8,24 @@ import '../models.dart';
 import 'common.dart';
 import 'maze_board.dart';
 
+Rect calculateBoardSurfaceRect({
+  required Size stackSize,
+  required double topInset,
+  required DifficultyConfig config,
+}) {
+  final double availableHeight = math.max(0.0, stackSize.height - topInset);
+  final BoardLayout layout = calculateBoardLayout(
+    Size(stackSize.width, availableHeight),
+    config,
+  );
+  final double boardWidth = layout.boardWidth;
+  final double boardHeight = layout.boardHeight;
+  final double x = (stackSize.width - boardWidth) / 2;
+  final double innerHeight = math.max(0.0, availableHeight - 214);
+  final double y = topInset + 72 + (innerHeight - boardHeight) / 2;
+  return Rect.fromLTWH(x, y, boardWidth, boardHeight);
+}
+
 class GameScreen extends StatelessWidget {
   const GameScreen({
     super.key,
@@ -46,22 +64,24 @@ class GameScreen extends StatelessWidget {
                     child: MazeSurfaceFrame(
                       key: surfaceKey,
                       palette: palette,
-                      child: MazeBoard(
-                        maze: controller.maze,
-                        playerPos: controller.playerPos,
-                        goalPos: controller.goalPos,
-                        trail: controller.trail,
-                        hintPath: controller.hintPath,
-                        isHintActive: controller.isHintActive,
-                        palette: palette,
-                        cellSize: layout.cellSize,
-                        onMove: controller.move,
-                        enabled:
-                            controller.isPlaying &&
-                            !controller.showLevelComplete &&
-                            !controller.isGameOver,
-                        successCycle: controller.successCycle,
-                        boardVersion: controller.boardVersion,
+                      child: RepaintBoundary(
+                        child: MazeBoard(
+                          maze: controller.maze,
+                          playerPos: controller.playerPos,
+                          goalPos: controller.goalPos,
+                          trail: controller.trail,
+                          hintPath: controller.hintPath,
+                          isHintActive: controller.isHintActive,
+                          palette: palette,
+                          cellSize: layout.cellSize,
+                          onMove: controller.move,
+                          enabled:
+                              controller.isPlaying &&
+                              !controller.showLevelComplete &&
+                              !controller.isGameOver,
+                          successCycle: controller.successCycle,
+                          boardVersion: controller.boardVersion,
+                        ),
                       ),
                     ),
                   ),

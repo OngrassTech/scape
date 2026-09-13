@@ -66,8 +66,9 @@ class AudioFeedbackController implements FeedbackController {
             cue: AudioPlayer(playerId: 'maze-${cue.name}-feedback'),
         },
         _audioContext = buildUiSoundAudioContext() {
-    for (final AudioPlayer player in _players.values) {
-      unawaited(player.setReleaseMode(ReleaseMode.stop));
+    for (final MapEntry<SoundCue, AudioPlayer> entry in _players.entries) {
+      unawaited(entry.value.setReleaseMode(ReleaseMode.stop));
+      unawaited(entry.value.setSource(AssetSource(_assetFor(entry.key))));
     }
   }
 

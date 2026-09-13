@@ -13,7 +13,8 @@ class MazeMotion {
   static const Duration modal = Duration(milliseconds: 240);
   static const Duration surfaceMorph = Duration(milliseconds: 280);
   static const Duration boardSuccess = Duration(milliseconds: 620);
-  static const Duration launchIntro = Duration(milliseconds: 1450);
+  static const Duration launchIntro = Duration(milliseconds: 1600);
+  static const Duration launchExpand = Duration(milliseconds: 650);
 
   static const Curve enterCurve = Curves.easeOutCubic;
   static const Curve exitCurve = Curves.easeInCubic;
@@ -167,25 +168,45 @@ class MazeSurfaceFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final BorderRadius radius = BorderRadius.circular(borderRadius);
+    final Color effectiveBorderColor = borderColor ?? palette.uiBorder;
 
-    return ClipRRect(
-      borderRadius: radius,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: backgroundColor ?? palette.mazeBg,
-          border: Border.all(color: borderColor ?? palette.uiBorder, width: 2),
-          borderRadius: radius,
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: shadowAlpha),
-              blurRadius: 24,
-              offset: const Offset(0, 16),
-            ),
-          ],
+    final Widget frame = Stack(
+      fit: StackFit.passthrough,
+      children: <Widget>[
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: backgroundColor ?? palette.mazeBg,
+            borderRadius: radius,
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: shadowAlpha),
+                blurRadius: 24,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: child,
         ),
-        child: child,
-      ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(color: effectiveBorderColor, width: 2),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
+
+    if (borderRadius > 0) {
+      return ClipRRect(
+        borderRadius: radius,
+        child: frame,
+      );
+    }
+    return frame;
   }
 }
 

@@ -185,12 +185,14 @@ class _MazeBoardState extends State<MazeBoard> with TickerProviderStateMixin {
               child: Stack(
                 fit: StackFit.expand,
                 children: <Widget>[
-                  CustomPaint(
-                    painter: _MazeBasePainter(
-                      maze: widget.maze,
-                      palette: widget.palette,
-                      cellSize: widget.cellSize,
-                      showOuterBorder: widget.showOuterBorder,
+                  RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _MazeBasePainter(
+                        maze: widget.maze,
+                        palette: widget.palette,
+                        cellSize: widget.cellSize,
+                        showOuterBorder: widget.showOuterBorder,
+                      ),
                     ),
                   ),
                   FadeTransition(

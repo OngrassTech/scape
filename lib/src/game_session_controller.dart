@@ -54,6 +54,8 @@ class GameSessionController extends ChangeNotifier {
     }
     if (initialSession != null) {
       _restoreSession(initialSession);
+    } else {
+      scheduleMicrotask(_pregenerateFreshMazeIfNeeded);
     }
   }
 
@@ -89,6 +91,8 @@ class GameSessionController extends ChangeNotifier {
   bool _isPlaying = false;
   bool _isGameOver = false;
   bool _showLevelComplete = false;
+  bool _returnToLevelCompleteOnClose = false;
+  bool _returnToGameOverOnClose = false;
   bool _isSuccessAnimating = false;
   bool _isHintActive = false;
   bool _hasUsedHint = false;
@@ -118,6 +122,9 @@ class GameSessionController extends ChangeNotifier {
   Timer? _hintHideTimer;
   Timer? _hintDeactivateTimer;
   Timer? _transientToastTimer;
+  Timer? _sessionPersistTimer;
+  List<List<MazeCell>>? _pregeneratedMaze;
+  Difficulty? _pregeneratedDifficulty;
   bool _sessionPersistQueued = false;
   bool _sessionPersistInFlight = false;
   bool _progressPersistQueued = false;
@@ -215,8 +222,11 @@ class GameSessionController extends ChangeNotifier {
     _hasSavedGame = false;
     _hasUsedHint = false;
     _lastClearWasNewBest = false;
+    _pregeneratedMaze = null;
+    _pregeneratedDifficulty = null;
     _scheduleSessionPersist();
     notifyListeners();
+    scheduleMicrotask(_pregenerateFreshMazeIfNeeded);
   }
 
   void setTheme(ThemeId theme) {
@@ -356,6 +366,8 @@ class GameSessionController extends ChangeNotifier {
   }
 
   void openSettings() {
+    _returnToLevelCompleteOnClose = false;
+    _returnToGameOverOnClose = false;
     _showSettings = true;
     _settingsPage = SettingsPanelPage.options;
     _restartTicker();
@@ -364,6 +376,8 @@ class GameSessionController extends ChangeNotifier {
   }
 
   void openShopOverlay() {
+    _returnToLevelCompleteOnClose = false;
+    _returnToGameOverOnClose = false;
     _showSettings = true;
     _settingsPage = SettingsPanelPage.shop;
     _restartTicker();
@@ -378,6 +392,14 @@ class GameSessionController extends ChangeNotifier {
     _clearOverlayTransientToast(notify: false);
     _showSettings = false;
     _settingsPage = SettingsPanelPage.options;
+    if (_returnToLevelCompleteOnClose) {
+      _returnToLevelCompleteOnClose = false;
+      _showLevelComplete = true;
+    }
+    if (_returnToGameOverOnClose) {
+      _returnToGameOverOnClose = false;
+      _isGameOver = true;
+    }
     _restartTicker();
     playUiFeedback(sound: SoundCue.swipe, haptic: HapticCue.medium);
     notifyListeners();
@@ -396,6 +418,8 @@ class GameSessionController extends ChangeNotifier {
   }
 
   void openScoreOverlay() {
+    _returnToLevelCompleteOnClose = _showLevelComplete;
+    _returnToGameOverOnClose = _isGameOver;
     _showLevelComplete = false;
     _isGameOver = false;
     _showSettings = true;
@@ -406,6 +430,10 @@ class GameSessionController extends ChangeNotifier {
   }
 
   void showSettingsHome() {
+    if (_returnToLevelCompleteOnClose || _returnToGameOverOnClose) {
+      closeSettings();
+      return;
+    }
     if (_settingsPage == SettingsPanelPage.options) {
       return;
     }
@@ -484,6 +512,8 @@ class GameSessionController extends ChangeNotifier {
     _settingsPage = SettingsPanelPage.options;
     _showLevelComplete = false;
     _isGameOver = false;
+    _returnToLevelCompleteOnClose = false;
+    _returnToGameOverOnClose = false;
     _restartTicker();
     notifyListeners();
   }
@@ -538,6 +568,8 @@ class GameSessionController extends ChangeNotifier {
     _isPlaying = false;
     _isGameOver = false;
     _showLevelComplete = false;
+    _returnToLevelCompleteOnClose = false;
+    _returnToGameOverOnClose = false;
     _isSuccessAnimating = false;
     _showSettings = false;
     _settingsPage = SettingsPanelPage.options;
@@ -549,6 +581,9 @@ class GameSessionController extends ChangeNotifier {
     _scheduleSessionPersist();
     _restartTicker();
     notifyListeners();
+    if (!preserveResume) {
+      scheduleMicrotask(_pregenerateFreshMazeIfNeeded);
+    }
   }
 
   void toggleTimeTrial() {
@@ -655,6 +690,14 @@ class GameSessionController extends ChangeNotifier {
       _clearOverlayTransientToast(notify: false);
       _showSettings = false;
       _settingsPage = SettingsPanelPage.options;
+      if (_returnToLevelCompleteOnClose) {
+        _returnToLevelCompleteOnClose = false;
+        _showLevelComplete = true;
+      }
+      if (_returnToGameOverOnClose) {
+        _returnToGameOverOnClose = false;
+        _isGameOver = true;
+      }
       _restartTicker();
       notifyListeners();
       return;
@@ -705,9 +748,25 @@ class GameSessionController extends ChangeNotifier {
     return List<Position>.unmodifiable(nextTrail);
   }
 
+  void _pregenerateFreshMazeIfNeeded() {
+    if (_screen != AppScreen.menu || _isPlaying || _hasSavedGame) {
+      return;
+    }
+    final Difficulty diff = _difficulty;
+    final DifficultyConfig config = diff.config;
+    _pregeneratedMaze = _generator.generate(config.width, config.height);
+    _pregeneratedDifficulty = diff;
+  }
+
   void _startFreshMaze() {
     final DifficultyConfig config = _difficulty.config;
-    _maze = _generator.generate(config.width, config.height);
+    if (_pregeneratedMaze != null && _pregeneratedDifficulty == _difficulty) {
+      _maze = _pregeneratedMaze!;
+      _pregeneratedMaze = null;
+      _pregeneratedDifficulty = null;
+    } else {
+      _maze = _generator.generate(config.width, config.height);
+    }
     _playerPos = const Position(0, 0);
     _goalPos = Position(config.width - 1, config.height - 1);
     _trail = const <Position>[Position(0, 0)];
@@ -717,6 +776,8 @@ class GameSessionController extends ChangeNotifier {
     _isPlaying = true;
     _isGameOver = false;
     _showLevelComplete = false;
+    _returnToLevelCompleteOnClose = false;
+    _returnToGameOverOnClose = false;
     _isSuccessAnimating = false;
     _hasUsedHint = false;
     _showSettings = false;
@@ -728,7 +789,7 @@ class GameSessionController extends ChangeNotifier {
     _lastClearWasNewBest = false;
     _clearHintState(notify: false);
     _levelCompleteTimer?.cancel();
-    _scheduleSessionPersist();
+    _scheduleSessionPersist(delay: const Duration(milliseconds: 350));
     _restartTicker();
     notifyListeners();
   }
@@ -740,6 +801,8 @@ class GameSessionController extends ChangeNotifier {
     _boardVersion++;
     _isGameOver = false;
     _showLevelComplete = false;
+    _returnToLevelCompleteOnClose = false;
+    _returnToGameOverOnClose = false;
     _isSuccessAnimating = false;
     _hasUsedHint = false;
     _isPlaying = true;
@@ -846,6 +909,8 @@ class GameSessionController extends ChangeNotifier {
   }
 
   Future<void> persistSession() async {
+    _sessionPersistTimer?.cancel();
+    _sessionPersistTimer = null;
     if (_sessionPreferences == null) {
       return;
     }
@@ -896,11 +961,21 @@ class GameSessionController extends ChangeNotifier {
     }
   }
 
-  void _scheduleSessionPersist() {
+  void _scheduleSessionPersist({Duration delay = Duration.zero}) {
     if (_sessionPreferences == null) {
       return;
     }
-    unawaited(persistSession());
+    if (delay == Duration.zero) {
+      _sessionPersistTimer?.cancel();
+      _sessionPersistTimer = null;
+      unawaited(persistSession());
+      return;
+    }
+    _sessionPersistTimer?.cancel();
+    _sessionPersistTimer = Timer(delay, () {
+      _sessionPersistTimer = null;
+      unawaited(persistSession());
+    });
   }
 
   void _scheduleProgressPersist() {
@@ -1047,6 +1122,7 @@ class GameSessionController extends ChangeNotifier {
     _levelCompleteTimer?.cancel();
     _cancelHintTimers();
     _transientToastTimer?.cancel();
+    _sessionPersistTimer?.cancel();
     _feedback.dispose();
     super.dispose();
   }

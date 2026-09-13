@@ -8,6 +8,7 @@ import 'package:mazegame/src/game_session_controller.dart';
 import 'package:mazegame/src/models.dart';
 import 'package:mazegame/src/progress_preferences.dart';
 import 'package:mazegame/src/widgets/common.dart';
+import 'package:mazegame/src/widgets/game_screen.dart';
 import 'package:mazegame/src/widgets/maze_board.dart';
 
 import 'test_helpers.dart';
@@ -1827,6 +1828,26 @@ void main() {
 
       expect(find.byKey(const Key('settings-score-view')), findsOneWidget);
       expect(find.byKey(const Key('success-best-button')), findsNothing);
+
+      // Tapping outside the score window returns to the success popup screen
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('settings-score-view')), findsNothing);
+      expect(find.byKey(const Key('success-best-button')), findsOneWidget);
+      expect(find.text('Next Maze'), findsOneWidget);
+
+      // Re-open score view from success screen
+      await tester.tap(find.byKey(const Key('success-best-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings-score-view')), findsOneWidget);
+
+      // Tapping back button in score view also returns to the success popup screen
+      await tester.tap(find.byKey(const Key('score-back-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings-score-view')), findsNothing);
+      expect(find.byKey(const Key('success-best-button')), findsOneWidget);
+      expect(find.text('Next Maze'), findsOneWidget);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       controller.dispose();
@@ -1884,6 +1905,101 @@ void main() {
       controller.dispose();
     }
   });
+
+  testWidgets(
+    'tapping play starts surface morph synchronously without frame delay',
+    (WidgetTester tester) async {
+      final GameSessionController controller = GameSessionController(
+        generator: FixedMazeGenerator(easyLPathMaze()),
+        feedbackController: NoopFeedbackController(),
+      );
+      try {
+        await tester.pumpWidget(
+          MazeGameApp(
+            key: const ValueKey<String>('play-synchronous-morph-test'),
+            controller: controller,
+          ),
+        );
+        await _settlePastLaunchIntro(tester);
+
+        expect(controller.screen, AppScreen.menu);
+        expect(find.byKey(const Key('menu-preview-card')), findsOneWidget);
+        expect(find.byKey(const Key('surface-morph-frame')), findsNothing);
+
+        await tester.tap(find.byKey(const Key('menu-preview-card')));
+        // In the very first pump frame (no delay), the morph should already be mounted
+        await tester.pump();
+
+        expect(controller.screen, AppScreen.playing);
+        expect(find.byKey(const Key('surface-morph-frame')), findsOneWidget);
+
+        // Allow morph to finish settling
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('surface-morph-frame')), findsNothing);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        controller.dispose();
+      }
+    },
+  );
+
+  testWidgets(
+    'calculateBoardSurfaceRect matches rendered board rect',
+    (WidgetTester tester) async {
+      final GameSessionController controller = GameSessionController(
+        generator: FixedMazeGenerator(easyLPathMaze()),
+        feedbackController: NoopFeedbackController(),
+      );
+      try {
+        await tester.pumpWidget(
+          MazeGameApp(
+            key: const ValueKey<String>('board-rect-match-test'),
+            controller: controller,
+          ),
+        );
+        await _settlePastLaunchIntro(tester);
+
+        await tester.tap(find.byKey(const Key('menu-preview-card')));
+        await tester.pumpAndSettle();
+
+        final RenderBox boardBox = tester.renderObject(
+          find.descendant(
+            of: find.byType(GameScreen),
+            matching: find.byType(MazeSurfaceFrame),
+          ),
+        );
+        final RenderBox rootBox = tester.renderObject(
+          find.descendant(
+            of: find.byType(Scaffold),
+            matching: find.byType(Stack),
+          ).first,
+        );
+        final Offset actualOffset = boardBox.localToGlobal(
+          Offset.zero,
+          ancestor: rootBox,
+        );
+        final Rect actualRect = actualOffset & boardBox.size;
+
+        final Size stackSize = rootBox.size;
+        final double topInset = MediaQuery.viewPaddingOf(
+          tester.element(find.byType(GameScreen)),
+        ).top;
+        final Rect calculated = calculateBoardSurfaceRect(
+          stackSize: stackSize,
+          topInset: topInset,
+          config: controller.difficulty.config,
+        );
+
+        expect(actualRect.left, closeTo(calculated.left, 0.01));
+        expect(actualRect.top, closeTo(calculated.top, 0.01));
+        expect(actualRect.width, closeTo(calculated.width, 0.01));
+        expect(actualRect.height, closeTo(calculated.height, 0.01));
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        controller.dispose();
+      }
+    },
+  );
 }
 
 double _fadeValue(WidgetTester tester, Key key) {

@@ -127,6 +127,7 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
   final GlobalKey _boardSurfaceKey = GlobalKey(debugLabel: 'board-surface');
 
   _SurfaceMorphSpec? _surfaceMorph;
+  Rect? _cachedMenuSurfaceRect;
   Timer? _exitToastTimer;
   Timer? _launchIntroTimer;
   bool _exitBackArmed = false;
@@ -140,13 +141,42 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
   @override
   void initState() {
     super.initState();
-    _launchIntroTimer = Timer(MazeMotion.launchIntro, () {
-      if (!mounted) {
-        return;
+    _launchIntroTimer = Timer(
+      MazeMotion.launchIntro + const Duration(seconds: 3),
+      _finishLaunchIntro,
+    );
+  }
+
+  void _finishLaunchIntro() {
+    if (!mounted || !_showLaunchIntro) {
+      return;
+    }
+    _launchIntroTimer?.cancel();
+    _launchIntroTimer = null;
+    // Expand the maze card outward while revealing the menu.
+    final Rect? cardRect = _localRectFor(_menuSurfaceKey);
+    setState(() {
+      _showLaunchIntro = false;
+      if (cardRect != null) {
+        final RenderObject? stackRenderObject =
+            _stackKey.currentContext?.findRenderObject();
+        final Size stackSize = stackRenderObject is RenderBox &&
+                stackRenderObject.hasSize
+            ? stackRenderObject.size
+            : MediaQuery.sizeOf(_stackKey.currentContext ?? context);
+        final Rect fullRect = Offset.zero & stackSize;
+        _surfaceMorph = _SurfaceMorphSpec(
+          fromRect: cardRect,
+          toRect: fullRect,
+          fromRadius: 28,
+          toRadius: 0,
+          fromShadowAlpha: 0,
+          toShadowAlpha: 0,
+          fromBackgroundAlpha: 0.0,
+          toBackgroundAlpha: 0.0,
+          duration: MazeMotion.launchExpand,
+        );
       }
-      setState(() {
-        _showLaunchIntro = false;
-      });
     });
   }
 
@@ -183,32 +213,76 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
   void _handleStartGame() {
     _disarmExitToast();
     final Rect? fromRect = _localRectFor(_menuSurfaceKey);
-    controller.startNewGame();
+    final RenderObject? stackRenderObject =
+        _stackKey.currentContext?.findRenderObject();
+    final Size stackSize =
+        stackRenderObject is RenderBox && stackRenderObject.hasSize
+            ? stackRenderObject.size
+            : MediaQuery.sizeOf(context);
+    final double topInset = MediaQuery.paddingOf(context).top;
+    final Rect toRect = calculateBoardSurfaceRect(
+      stackSize: stackSize,
+      topInset: topInset,
+      config: controller.difficulty.config,
+    );
 
-    if (fromRect == null) {
-      return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      final Rect? toRect = _localRectFor(_boardSurfaceKey);
-      if (toRect == null) {
-        return;
-      }
+    if (fromRect != null) {
+      _cachedMenuSurfaceRect = fromRect;
       setState(() {
         _surfaceMorph = _SurfaceMorphSpec.menuToBoard(
           fromRect: fromRect,
           toRect: toRect,
         );
       });
-    });
+    }
+
+    controller.startNewGame();
+  }
+
+  void _handleResumeGame() {
+    _disarmExitToast();
+    final Rect? fromRect = _localRectFor(_menuSurfaceKey);
+    final RenderObject? stackRenderObject =
+        _stackKey.currentContext?.findRenderObject();
+    final Size stackSize =
+        stackRenderObject is RenderBox && stackRenderObject.hasSize
+            ? stackRenderObject.size
+            : MediaQuery.sizeOf(context);
+    final double topInset = MediaQuery.paddingOf(context).top;
+    final Rect toRect = calculateBoardSurfaceRect(
+      stackSize: stackSize,
+      topInset: topInset,
+      config: controller.difficulty.config,
+    );
+
+    if (fromRect != null) {
+      _cachedMenuSurfaceRect = fromRect;
+      setState(() {
+        _surfaceMorph = _SurfaceMorphSpec.menuToBoard(
+          fromRect: fromRect,
+          toRect: toRect,
+        );
+      });
+    }
+
+    controller.resumeGame();
   }
 
   void _handleGameBackToMenu({required bool preserveResume, Rect? fromRect}) {
     _disarmExitToast();
     final Rect? originRect = fromRect ?? _localRectFor(_boardSurfaceKey);
+    final Rect? cachedMenuRect =
+        _cachedMenuSurfaceRect ?? _localRectFor(_menuSurfaceKey);
+
+    if (originRect != null && cachedMenuRect != null) {
+      setState(() {
+        _surfaceMorph = _SurfaceMorphSpec.boardToMenu(
+          fromRect: originRect,
+          toRect: cachedMenuRect,
+        );
+      });
+    }
+
     controller.backToMenu(withFeedback: false, preserveResume: preserveResume);
 
     if (originRect == null) {
@@ -220,26 +294,29 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
       return;
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      final Rect? toRect = _localRectFor(_menuSurfaceKey);
-      if (toRect == null) {
-        if (_isOverlayMenuTransitionActive) {
-          setState(() {
-            _isOverlayMenuTransitionActive = false;
-          });
+    if (cachedMenuRect == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
         }
-        return;
-      }
-      setState(() {
-        _surfaceMorph = _SurfaceMorphSpec.boardToMenu(
-          fromRect: originRect,
-          toRect: toRect,
-        );
+        final Rect? toRect = _localRectFor(_menuSurfaceKey);
+        if (toRect == null) {
+          if (_isOverlayMenuTransitionActive) {
+            setState(() {
+              _isOverlayMenuTransitionActive = false;
+            });
+          }
+          return;
+        }
+        _cachedMenuSurfaceRect = toRect;
+        setState(() {
+          _surfaceMorph = _SurfaceMorphSpec.boardToMenu(
+            fromRect: originRect,
+            toRect: toRect,
+          );
+        });
       });
-    });
+    }
   }
 
   Future<void> _handleOverlayMainMenu() async {
@@ -364,7 +441,9 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
                         controller: controller,
                         palette: palette,
                         onStartGame: _handleStartGame,
+                        onResumeGame: _handleResumeGame,
                         showLaunchIntro: _showLaunchIntro,
+                        onLaunchIntroComplete: _finishLaunchIntro,
                         surfaceKey: _menuSurfaceKey,
                       )
                     : GameScreen(
@@ -378,11 +457,15 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
                 key: _stackKey,
                 children: <Widget>[
                   Positioned.fill(
-                    // BackgroundMaze now self-animates the wall-morph when
-                    // difficulty changes — no AnimatedSwitcher needed here.
-                    child: BackgroundMaze(
-                      difficulty: controller.difficulty,
-                      palette: palette,
+                    child: RepaintBoundary(
+                      child: BackgroundMaze(
+                        difficulty: controller.difficulty,
+                        palette: palette,
+                        previewCardKey: _menuSurfaceKey,
+                        showRoamingBlock:
+                            controller.screen == AppScreen.menu &&
+                            !_showLaunchIntro,
+                      ),
                     ),
                   ),
                   Positioned.fill(
@@ -392,16 +475,20 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
                       switchOutCurve: MazeMotion.exitCurve,
                       child: KeyedSubtree(
                         key: ValueKey<AppScreen>(controller.screen),
-                        child: content,
+                        child: RepaintBoundary(
+                          child: content,
+                        ),
                       ),
                     ),
                   ),
                   if (_surfaceMorph case final _SurfaceMorphSpec surfaceMorph)
                     Positioned.fill(
-                      child: _SurfaceMorph(
-                        palette: palette,
-                        spec: surfaceMorph,
-                        onComplete: _clearSurfaceMorph,
+                      child: RepaintBoundary(
+                        child: _SurfaceMorph(
+                          palette: palette,
+                          spec: surfaceMorph,
+                          onComplete: _clearSurfaceMorph,
+                        ),
                       ),
                     ),
                   Positioned.fill(
@@ -425,6 +512,14 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
                       ),
                     ),
                   ),
+                  if (controller.showLevelComplete || controller.isGameOver)
+                    Positioned.fill(
+                      child: GameResultOverlay(
+                        controller: controller,
+                        palette: palette,
+                        onMainMenu: _handleOverlayMainMenu,
+                      ),
+                    ),
                   if (controller.showHelp)
                     Positioned.fill(
                       child: HelpDialog(
@@ -435,14 +530,6 @@ class _MazeGameHomeState extends State<_MazeGameHome> {
                   if (controller.showSettings)
                     Positioned.fill(
                       child: SettingsDialog(
-                        controller: controller,
-                        palette: palette,
-                        onMainMenu: _handleOverlayMainMenu,
-                      ),
-                    ),
-                  if (controller.showLevelComplete || controller.isGameOver)
-                    Positioned.fill(
-                      child: GameResultOverlay(
                         controller: controller,
                         palette: palette,
                         onMainMenu: _handleOverlayMainMenu,
@@ -1215,6 +1302,7 @@ class _SurfaceMorphSpec {
     required this.toShadowAlpha,
     required this.fromBackgroundAlpha,
     required this.toBackgroundAlpha,
+    this.duration,
   });
 
   const _SurfaceMorphSpec.menuToBoard({
@@ -1253,6 +1341,7 @@ class _SurfaceMorphSpec {
   final double toShadowAlpha;
   final double fromBackgroundAlpha;
   final double toBackgroundAlpha;
+  final Duration? duration;
 }
 
 class _SurfaceMorph extends StatefulWidget {
@@ -1279,7 +1368,7 @@ class _SurfaceMorphState extends State<_SurfaceMorph>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: MazeMotion.surfaceMorph,
+      duration: widget.spec.duration ?? MazeMotion.surfaceMorph,
     )..forward();
     _controller.addStatusListener((AnimationStatus status) {
       if (status == AnimationStatus.completed) {

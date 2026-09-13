@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -16,14 +15,18 @@ class MenuScreen extends StatelessWidget {
     required this.controller,
     required this.palette,
     required this.onStartGame,
+    this.onResumeGame,
     this.showLaunchIntro = false,
+    this.onLaunchIntroComplete,
     this.surfaceKey,
   });
 
   final GameSessionController controller;
   final MazePalette palette;
   final VoidCallback onStartGame;
+  final VoidCallback? onResumeGame;
   final bool showLaunchIntro;
+  final VoidCallback? onLaunchIntroComplete;
   final Key? surfaceKey;
 
   @override
@@ -45,16 +48,22 @@ class MenuScreen extends StatelessWidget {
             child: Column(
               children: <Widget>[
                 const SizedBox(height: 34),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 360),
-                  child: Text(
-                    'SCAPE',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: palette.textMain,
-                      fontSize: constraints.maxWidth < 360 ? 52 : 64,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
+                AnimatedOpacity(
+                  key: const Key('menu-logo-fade'),
+                  duration: MazeMotion.launchExpand,
+                  curve: MazeMotion.enterCurve,
+                  opacity: showLaunchIntro ? 0 : 1,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: Text(
+                      'SCAPE',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: palette.textMain,
+                        fontSize: constraints.maxWidth < 360 ? 52 : 64,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 4,
+                      ),
                     ),
                   ),
                 ),
@@ -77,6 +86,7 @@ class MenuScreen extends StatelessWidget {
                                 surfaceKey: surfaceKey,
                                 palette: palette,
                                 showLaunchIntro: showLaunchIntro,
+                                onLaunchIntroComplete: onLaunchIntroComplete,
                               ),
                             ),
                           ),
@@ -126,6 +136,7 @@ class MenuScreen extends StatelessWidget {
                                                 ),
                                                 label: 'Resume',
                                                 onPressed:
+                                                    onResumeGame ??
                                                     controller.resumeGame,
                                                 palette: palette,
                                                 backgroundColor:
@@ -167,11 +178,13 @@ class _MazePreviewCard extends StatelessWidget {
     this.surfaceKey,
     required this.palette,
     required this.showLaunchIntro,
+    this.onLaunchIntroComplete,
   });
 
   final Key? surfaceKey;
   final MazePalette palette;
   final bool showLaunchIntro;
+  final VoidCallback? onLaunchIntroComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -182,23 +195,27 @@ class _MazePreviewCard extends StatelessWidget {
       borderColor: palette.uiBorder,
       backgroundColor: Colors.transparent,
       shadowAlpha: 0,
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          const SizedBox.expand(key: Key('menu-preview-outline')),
-          AnimatedSwitcher(
-            duration: MazeMotion.standard,
-            switchInCurve: MazeMotion.enterCurve,
-            switchOutCurve: MazeMotion.exitCurve,
-            transitionBuilder: _buildFadeTransition,
-            child: showLaunchIntro
-                ? _LaunchPreviewAnimation(
-                    key: const ValueKey<String>('launch-preview-active'),
-                    palette: palette,
-                  )
-                : const SizedBox(key: ValueKey<String>('launch-preview-empty')),
-          ),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            const SizedBox.expand(key: Key('menu-preview-outline')),
+            AnimatedSwitcher(
+              duration: MazeMotion.standard,
+              switchInCurve: MazeMotion.enterCurve,
+              switchOutCurve: MazeMotion.exitCurve,
+              transitionBuilder: _buildFadeTransition,
+              child: showLaunchIntro
+                  ? _LaunchPreviewAnimation(
+                      key: const ValueKey<String>('launch-preview-active'),
+                      palette: palette,
+                      onComplete: onLaunchIntroComplete,
+                    )
+                  : const SizedBox(key: ValueKey<String>('launch-preview-empty')),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -441,9 +458,14 @@ class _DifficultySelectorState extends State<_DifficultySelector>
 }
 
 class _LaunchPreviewAnimation extends StatefulWidget {
-  const _LaunchPreviewAnimation({super.key, required this.palette});
+  const _LaunchPreviewAnimation({
+    super.key,
+    required this.palette,
+    this.onComplete,
+  });
 
   final MazePalette palette;
+  final VoidCallback? onComplete;
 
   @override
   State<_LaunchPreviewAnimation> createState() =>
@@ -453,6 +475,7 @@ class _LaunchPreviewAnimation extends StatefulWidget {
 class _LaunchPreviewAnimationState extends State<_LaunchPreviewAnimation>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  bool _notifiedComplete = false;
 
   @override
   void initState() {
@@ -460,7 +483,20 @@ class _LaunchPreviewAnimationState extends State<_LaunchPreviewAnimation>
     _controller = AnimationController(
       vsync: this,
       duration: MazeMotion.launchIntro,
-    )..forward();
+    );
+    _controller.addListener(() {
+      if (_controller.value >= 1.0 && !_notifiedComplete) {
+        _notifiedComplete = true;
+        widget.onComplete?.call();
+      }
+    });
+    _controller.addStatusListener((AnimationStatus status) {
+      if (status == AnimationStatus.completed && !_notifiedComplete) {
+        _notifiedComplete = true;
+        widget.onComplete?.call();
+      }
+    });
+    _controller.forward();
   }
 
   @override
@@ -482,45 +518,26 @@ class _LaunchPreviewAnimationState extends State<_LaunchPreviewAnimation>
             animation: _controller,
             builder: (BuildContext context, _) {
               final double progress = _controller.value;
-              final double boardScale =
-                  lerpDouble(
-                    1.14,
-                    1.0,
-                    Curves.easeInOutCubic.transform(progress),
-                  ) ??
-                  1.0;
-              final double boardLift =
-                  lerpDouble(8, 0, Curves.easeInOutCubic.transform(progress)) ??
-                  0;
               final _LaunchIntroFrame frame = _launchIntroFrameFor(progress);
 
-              return ColoredBox(
-                color: widget.palette.mazeBg,
-                child: Transform.translate(
-                  offset: Offset(0, boardLift),
-                  child: Transform.scale(
-                    scale: boardScale,
-                    child: SizedBox(
-                      width: constraints.maxWidth,
-                      height: rows * cellSize,
-                      child: MazeBoard(
-                        key: const Key('launch-intro-board'),
-                        maze: _launchIntroMaze,
-                        playerPos: frame.playerPos,
-                        goalPos: _launchIntroGoal,
-                        trail: frame.trail,
-                        hintPath: const <Position>[],
-                        isHintActive: false,
-                        palette: widget.palette,
-                        cellSize: cellSize,
-                        onMove: (int dx, int dy) {},
-                        enabled: false,
-                        successCycle: 0,
-                        boardVersion: 0,
-                        showOuterBorder: false,
-                      ),
-                    ),
-                  ),
+              return SizedBox(
+                width: constraints.maxWidth,
+                height: rows * cellSize,
+                child: MazeBoard(
+                  key: const Key('launch-intro-board'),
+                  maze: _launchIntroMaze,
+                  playerPos: frame.playerPos,
+                  goalPos: _launchIntroGoal,
+                  trail: frame.trail,
+                  hintPath: const <Position>[],
+                  isHintActive: false,
+                  palette: widget.palette,
+                  cellSize: cellSize,
+                  onMove: (int dx, int dy) {},
+                  enabled: false,
+                  successCycle: 0,
+                  boardVersion: 0,
+                  showOuterBorder: false,
                 ),
               );
             },
@@ -531,6 +548,10 @@ class _LaunchPreviewAnimationState extends State<_LaunchPreviewAnimation>
   }
 }
 
+// ---------------------------------------------------------------------------
+// Launch intro data
+// ---------------------------------------------------------------------------
+
 class _LaunchIntroFrame {
   const _LaunchIntroFrame({required this.playerPos, required this.trail});
 
@@ -540,409 +561,55 @@ class _LaunchIntroFrame {
 
 const Position _launchIntroGoal = Position(7, 7);
 
-// Full path (29 cells, 14 turns):
-// (0,0)→(3,0) right | (3,0)→(3,2) down | (3,2)→(1,2) left
-// (1,2)→(1,4) down  | (1,4)→(4,4) right | (4,4)→(4,3) up
-// (4,3)→(6,3) right | (6,3)→(6,1) up   | (6,1)→(7,1) right
-// (7,1)→(7,4) down  | (7,4)→(5,4) left  | (5,4)→(5,6) down
-// (5,6)→(3,6) left  | (3,6)→(3,7) down  | (3,7)→(7,7) right
-const List<_LaunchIntroFrame> _launchIntroFrames = <_LaunchIntroFrame>[
-  // Stop 0 – start
-  _LaunchIntroFrame(
-    playerPos: Position(0, 0),
-    trail: <Position>[Position(0, 0)],
-  ),
-  // Stop 1 – right to (3, 0)
-  _LaunchIntroFrame(
-    playerPos: Position(3, 0),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-    ],
-  ),
-  // Stop 2 – down to (3, 2)
-  _LaunchIntroFrame(
-    playerPos: Position(3, 2),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-    ],
-  ),
-  // Stop 3 – left to (1, 2)
-  _LaunchIntroFrame(
-    playerPos: Position(1, 2),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-    ],
-  ),
-  // Stop 4 – down to (1, 4)
-  _LaunchIntroFrame(
-    playerPos: Position(1, 4),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-    ],
-  ),
-  // Stop 5 – right to (4, 4)
-  _LaunchIntroFrame(
-    playerPos: Position(4, 4),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-    ],
-  ),
-  // Stop 6 – up to (4, 3)
-  _LaunchIntroFrame(
-    playerPos: Position(4, 3),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-    ],
-  ),
-  // Stop 7 – right to (6, 3)
-  _LaunchIntroFrame(
-    playerPos: Position(6, 3),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-    ],
-  ),
-  // Stop 8 – up to (6, 1)
-  _LaunchIntroFrame(
-    playerPos: Position(6, 1),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-    ],
-  ),
-  // Stop 9 – right to (7, 1)
-  _LaunchIntroFrame(
-    playerPos: Position(7, 1),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-      Position(7, 1),
-    ],
-  ),
-  // Stop 10 – down to (7, 4)
-  _LaunchIntroFrame(
-    playerPos: Position(7, 4),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-      Position(7, 1),
-      Position(7, 2),
-      Position(7, 3),
-      Position(7, 4),
-    ],
-  ),
-  // Stop 11 – left to (5, 4)
-  _LaunchIntroFrame(
-    playerPos: Position(5, 4),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-      Position(7, 1),
-      Position(7, 2),
-      Position(7, 3),
-      Position(7, 4),
-      Position(6, 4),
-      Position(5, 4),
-    ],
-  ),
-  // Stop 12 – down to (5, 6)
-  _LaunchIntroFrame(
-    playerPos: Position(5, 6),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-      Position(7, 1),
-      Position(7, 2),
-      Position(7, 3),
-      Position(7, 4),
-      Position(6, 4),
-      Position(5, 4),
-      Position(5, 5),
-      Position(5, 6),
-    ],
-  ),
-  // Stop 13 – left to (3, 6)
-  _LaunchIntroFrame(
-    playerPos: Position(3, 6),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-      Position(7, 1),
-      Position(7, 2),
-      Position(7, 3),
-      Position(7, 4),
-      Position(6, 4),
-      Position(5, 4),
-      Position(5, 5),
-      Position(5, 6),
-      Position(4, 6),
-      Position(3, 6),
-    ],
-  ),
-  // Stop 14 – down to (3, 7)
-  _LaunchIntroFrame(
-    playerPos: Position(3, 7),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-      Position(7, 1),
-      Position(7, 2),
-      Position(7, 3),
-      Position(7, 4),
-      Position(6, 4),
-      Position(5, 4),
-      Position(5, 5),
-      Position(5, 6),
-      Position(4, 6),
-      Position(3, 6),
-      Position(3, 7),
-    ],
-  ),
-  // Stop 15 – right to (7, 7) – goal!
-  _LaunchIntroFrame(
-    playerPos: Position(7, 7),
-    trail: <Position>[
-      Position(0, 0),
-      Position(1, 0),
-      Position(2, 0),
-      Position(3, 0),
-      Position(3, 1),
-      Position(3, 2),
-      Position(2, 2),
-      Position(1, 2),
-      Position(1, 3),
-      Position(1, 4),
-      Position(2, 4),
-      Position(3, 4),
-      Position(4, 4),
-      Position(4, 3),
-      Position(5, 3),
-      Position(6, 3),
-      Position(6, 2),
-      Position(6, 1),
-      Position(7, 1),
-      Position(7, 2),
-      Position(7, 3),
-      Position(7, 4),
-      Position(6, 4),
-      Position(5, 4),
-      Position(5, 5),
-      Position(5, 6),
-      Position(4, 6),
-      Position(3, 6),
-      Position(3, 7),
-      Position(4, 7),
-      Position(5, 7),
-      Position(6, 7),
-      Position(7, 7),
-    ],
-  ),
-];
-
-// Stops are spaced so each segment's speed feels proportional to its length.
-const List<double> _launchIntroStops = <double>[
-  0.00, // (0,0) start
-  0.07, // (3,0) after 3 steps right
-  0.13, // (3,2) after 2 steps down
-  0.19, // (1,2) after 2 steps left
-  0.25, // (1,4) after 2 steps down
-  0.33, // (4,4) after 3 steps right
-  0.37, // (4,3) after 1 step up
-  0.43, // (6,3) after 2 steps right
-  0.49, // (6,1) after 2 steps up
-  0.53, // (7,1) after 1 step right
-  0.62, // (7,4) after 3 steps down
-  0.68, // (5,4) after 2 steps left
-  0.75, // (5,6) after 2 steps down
-  0.82, // (3,6) after 2 steps left
-  0.87, // (3,7) after 1 step down
-  0.93, // (7,7) after 4 steps right – goal
+// Full path (33 cells, 14 turns) visited cell-by-cell:
+const List<Position> _launchIntroPath = <Position>[
+  Position(0, 0),
+  Position(1, 0),
+  Position(2, 0),
+  Position(3, 0),
+  Position(3, 1),
+  Position(3, 2),
+  Position(2, 2),
+  Position(1, 2),
+  Position(1, 3),
+  Position(1, 4),
+  Position(2, 4),
+  Position(3, 4),
+  Position(4, 4),
+  Position(4, 3),
+  Position(5, 3),
+  Position(6, 3),
+  Position(6, 2),
+  Position(6, 1),
+  Position(7, 1),
+  Position(7, 2),
+  Position(7, 3),
+  Position(7, 4),
+  Position(6, 4),
+  Position(5, 4),
+  Position(5, 5),
+  Position(5, 6),
+  Position(4, 6),
+  Position(3, 6),
+  Position(3, 7),
+  Position(4, 7),
+  Position(5, 7),
+  Position(6, 7),
+  Position(7, 7),
 ];
 
 final List<List<MazeCell>> _launchIntroMaze = _buildLaunchIntroMaze();
 
 _LaunchIntroFrame _launchIntroFrameFor(double progress) {
-  for (int index = _launchIntroStops.length - 1; index >= 0; index--) {
-    if (progress >= _launchIntroStops[index]) {
-      return _launchIntroFrames[index];
-    }
-  }
-  return _launchIntroFrames.first;
+  // Move smoothly through the maze over the first 93% of duration (~1488ms),
+  // then touch down at the goal position for ~112ms before the reveal starts.
+  final double moveProgress = (progress / 0.93).clamp(0.0, 1.0);
+  final int totalSteps = _launchIntroPath.length - 1;
+  final int index = (moveProgress * totalSteps).floor().clamp(0, totalSteps);
+  return _LaunchIntroFrame(
+    playerPos: _launchIntroPath[index],
+    trail: _launchIntroPath.sublist(0, index + 1),
+  );
 }
 
 List<List<MazeCell>> _buildLaunchIntroMaze() {
